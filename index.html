@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>國際專修部 - 學生課表快速查詢系統</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Noto Sans TC"', '"Plus Jakarta Sans"', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        @media print {
+            .no-print { display: none !important; }
+            .printable-card { border: 1px solid #e2e8f0 !important; box-shadow: none !important; }
+        }
+    </style>
+</head>
+<body class="h-full text-slate-800 antialiased flex flex-col selection:bg-brand-500 selection:text-white">
+
+    <!-- Top Header Navigation -->
+    <header class="bg-gradient-to-r from-slate-900 via-brand-900 to-indigo-950 text-white shadow-md no-print sticky top-0 z-30">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-brand-600/90 border border-brand-400/30 flex items-center justify-center text-white shadow-inner">
+                    <i data-lucide="globe" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base sm:text-lg leading-tight tracking-wide flex items-center gap-2">
+                        國際專修部 課表查詢系統
+                        <span class="text-[10px] font-normal px-2 py-0.5 rounded-full bg-brand-500/30 border border-brand-400/30 text-brand-200">115-1 學期</span>
+                    </h1>
+                    <p class="text-xs text-slate-300 font-light">International Student Course Schedule Query System</p>
+                </div>
+            </div>
+
+            <div id="live-time" class="hidden sm:flex items-center space-x-2 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700/60 text-xs font-mono text-slate-300">
+                <i data-lucide="clock" class="w-3.5 h-3.5 text-brand-400"></i>
+                <span id="time-display">--:--:--</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+        <!-- Search Bar Section Card -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200/90 p-5 sm:p-6 no-print">
+            <div class="max-w-2xl mx-auto space-y-4">
+                <label for="student-search-input" class="block text-sm font-bold text-slate-700 flex items-center space-x-2">
+                    <i data-lucide="search" class="w-4 h-4 text-brand-600"></i>
+                    <span>請輸入學生學號查詢個人課表：</span>
+                </label>
+
+                <div class="relative flex items-center">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                        <i data-lucide="id-card" class="w-5 h-5"></i>
+                    </div>
+                    <input type="text" id="student-search-input" 
+                        class="block w-full pl-11 pr-28 py-3.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-mono font-bold text-base sm:text-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all"
+                        placeholder="例如：26F10125, 26F10119..."
+                        autocomplete="off"
+                        onkeydown="if(event.key === 'Enter') performSearch()">
+                    <button onclick="performSearch()" 
+                        class="absolute right-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-medium rounded-lg shadow-sm transition flex items-center space-x-1.5">
+                        <span>查詢</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <!-- Quick Test Buttons (Classes A ~ H) -->
+                <div class="pt-2">
+                    <div class="text-xs text-slate-500 font-semibold mb-2 flex items-center gap-1">
+                        <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-500"></i>
+                        <span>快速示範點擊測試（各班學生）：</span>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5 text-xs">
+                        <button onclick="quickTest('26F10125')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-brand-50 hover:text-brand-700 hover:border-brand-300 text-slate-700 font-mono font-medium rounded-lg border border-slate-200 transition">A班 (26F10125)</button>
+                        <button onclick="quickTest('26F10119')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-brand-50 hover:text-brand-700 hover:border-brand-300 text-slate-700 font-mono font-medium rounded-lg border border-slate-200 transition">B班 (26F10119)</button>
+                        <button onclick="quickTest('26F13108')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-brand-50 hover:text-brand-700 hover:border-brand-300 text-slate-700 font-mono font-medium rounded-lg border border-slate-200 transition">C班 (26F13108)</button>
+                        <button onclick="quickTest('26F22120')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-brand-50 hover:text-brand-700 hover:border-brand-300 text-slate-700 font-mono font-medium rounded-lg border border-slate-200 transition">D班 (26F22120)</button>
+                        <button onclick="quickTest('26F22102')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-brand-50 hover:text-brand-700 hover:border-brand-300 text-slate-700 font-mono font-medium rounded-lg border border-slate-200 transition">E班 (26F22102)</button>
+                        <button onclick="quickTest('26F22128')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-brand-50 hover:text-brand-700 hover:border-brand-300 text-slate-700 font-mono font-medium rounded-lg border border-slate-200 transition">F班 (26F22128)</button>
+                        <button onclick="quickTest('26F01106')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-brand-50 hover:text-brand-700 hover:border-brand-300 text-slate-700 font-mono font-medium rounded-lg border border-slate-200 transition">G班 (26F01106)</button>
+                        <button onclick="quickTest('26F22109')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-brand-50 hover:text-brand-700 hover:border-brand-300 text-slate-700 font-mono font-medium rounded-lg border border-slate-200 transition">H班 (26F22109)</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Error Alert Banner -->
+        <div id="error-banner" class="hidden bg-rose-50 border-l-4 border-rose-500 p-4 rounded-xl shadow-sm transition">
+            <div class="flex items-center space-x-3">
+                <i data-lucide="alert-circle" class="w-5 h-5 text-rose-500 shrink-0"></i>
+                <div class="flex-1">
+                    <h3 class="text-sm font-bold text-rose-800">查無學生資料</h3>
+                    <p id="error-msg" class="text-xs text-rose-700 mt-0.5">請確認學號是否正確輸入。</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Student Basic Profile Card -->
+        <section id="student-profile-card" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200/90 p-5 sm:p-6 printable-card relative overflow-hidden">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div class="flex items-center space-x-4">
+                    <div id="student-avatar" class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-600 text-white font-bold text-xl flex items-center justify-center shadow-md shadow-brand-500/20 shrink-0">
+                        --
+                    </div>
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h2 id="student-cn-name" class="text-2xl font-bold text-slate-900">--</h2>
+                            <span id="student-class-badge" class="px-2.5 py-0.5 bg-indigo-100 text-indigo-800 text-xs font-bold rounded-full border border-indigo-200">
+                                -- 班
+                            </span>
+                            <span id="student-id-display" class="px-2.5 py-0.5 bg-slate-100 text-slate-700 font-mono text-xs font-bold rounded-md border border-slate-200">
+                                --
+                            </span>
+                        </div>
+                        <p id="student-en-name" class="text-xs font-mono text-slate-500 font-medium mt-1">--</p>
+                        <p id="student-dept-display" class="text-xs font-semibold text-brand-700 mt-1 flex items-center gap-1">
+                            <i data-lucide="graduation-cap" class="w-3.5 h-3.5"></i>
+                            <span>--</span>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 self-stretch sm:self-center justify-end no-print">
+                    <button onclick="window.print()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition flex items-center space-x-1.5 border border-slate-200">
+                        <i data-lucide="printer" class="w-4 h-4"></i>
+                        <span>列印課表</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Schedule Section with Tabs -->
+        <section id="schedule-section" class="hidden space-y-4">
+            
+            <!-- Tab Buttons -->
+            <div class="flex items-center justify-between bg-white p-1.5 rounded-xl border border-slate-200/90 shadow-sm no-print">
+                <div class="flex items-center space-x-1 w-full sm:w-auto">
+                    <button id="tab-btn-today" onclick="switchScheduleTab('today')" 
+                        class="flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center justify-center space-x-2 transition-all bg-brand-600 text-white shadow-sm">
+                        <i data-lucide="calendar-day" class="w-4 h-4"></i>
+                        <span>當日課表 (Today)</span>
+                    </button>
+                    <button id="tab-btn-weekly" onclick="switchScheduleTab('weekly')" 
+                        class="flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-600 hover:text-slate-900 flex items-center justify-center space-x-2 transition-all">
+                        <i data-lucide="calendar-range" class="w-4 h-4"></i>
+                        <span>當週課表 (Weekly)</span>
+                    </button>
+                </div>
+
+                <span class="hidden md:inline-block text-xs text-slate-400 font-medium px-3">
+                    國際專修部 華語及專業分班課表
+                </span>
+            </div>
+
+            <!-- Tab Content 1: Today Schedule -->
+            <div id="tab-content-today" class="bg-white rounded-2xl shadow-sm border border-slate-200/90 p-5 sm:p-6 space-y-5">
+                <!-- Day Selector Sub-tabs -->
+                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <span class="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+                        <i data-lucide="calendar" class="w-4 h-4 text-brand-600"></i>
+                        <span>選擇上課星期：</span>
+                    </span>
+                    <div class="flex space-x-1 bg-slate-100 p-1 rounded-xl">
+                        <button onclick="selectDay(1)" id="day-btn-1" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition">週一</button>
+                        <button onclick="selectDay(2)" id="day-btn-2" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition">週二</button>
+                        <button onclick="selectDay(3)" id="day-btn-3" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition">週三</button>
+                        <button onclick="selectDay(4)" id="day-btn-4" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition">週四</button>
+                        <button onclick="selectDay(5)" id="day-btn-5" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition">週五</button>
+                    </div>
+                </div>
+
+                <!-- Today Schedule Timeline List -->
+                <div id="today-schedule-list" class="space-y-3">
+                    <!-- Dynamic rendering by JS -->
+                </div>
+            </div>
+
+            <!-- Tab Content 2: Weekly Schedule Grid -->
+            <div id="tab-content-weekly" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200/90 overflow-hidden">
+                <div class="overflow-x-auto p-3 sm:p-5">
+                    <div id="weekly-grid-container" class="min-w-[680px] grid grid-cols-6 gap-2 text-xs">
+                        <!-- Dynamic rendering by JS -->
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Initial Welcome Placeholder State -->
+        <section id="welcome-placeholder" class="bg-white rounded-2xl shadow-sm border border-slate-200/90 p-8 text-center my-6">
+            <div class="max-w-md mx-auto space-y-4">
+                <div class="w-16 h-16 bg-brand-50 text-brand-600 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
+                    <i data-lucide="search" class="w-8 h-8"></i>
+                </div>
+                <h3 class="text-base font-bold text-slate-800">請輸入學號開始查詢課表</h3>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    可於上方搜尋列輸入學號，或直接點選「快捷示範測試」按鈕（例如 A 班 <span class="font-mono font-bold text-brand-600">26F10125</span>），系統將自動顯示該生的姓名、班別與當天/全週課表。
+                </p>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        
+        // 1. Full International Program Students Database
+        const studentsData = [
+            // Class A
+            {"id":"26F10125","name":"黄貴呢","enName":"QUEENIE HOLLY SAU","dept":"休閒與觀光管理系","class":"A"},
+            {"id":"26F10108","name":"阮黃福","enName":"NGUYEN HOANG PHUC","dept":"休閒與觀光管理系","class":"A"},
+            {"id":"26F22116","name":"裴草薇","enName":"BUI THAO VY","dept":"餐旅與烘焙管理系","class":"A"},
+            {"id":"26F10110","name":"楊氏小珠","enName":"DUONG THI BE CHAU","dept":"休閒與觀光管理系","class":"A"},
+            {"id":"26F10121","name":"黎氏日梨","enName":"LE THI NHAT LE","dept":"休閒與觀光管理系","class":"A"},
+            {"id":"26F22124","name":"黎玄珍","enName":"LE HUYEN TRAN","dept":"餐旅與烘焙管理系","class":"A"},
+            {"id":"26F10124","name":"黃寶玲","enName":"HOANG BAO LINH","dept":"休閒與觀光管理系","class":"A"},
+            {"id":"26F10123","name":"魏麗霞","enName":"VILISYA","dept":"休閒與觀光管理系","class":"A"},
+            {"id":"26F22140","name":"李美英","enName":"GRACE CORORENSIA","dept":"餐旅與烘焙管理系","class":"A"},
+            {"id":"26F22101","name":"黃金花","enName":"VELOVE VEXIA MARCELIA","dept":"餐旅與烘焙管理系","class":"A"},
+
+            // Class B
+            {"id":"26F10119","name":"范英詩","enName":"PHAM ANH THO","dept":"休閒與觀光管理系","class":"B"},
+            {"id":"26F10127","name":"龐氏秋賢","enName":"BANG THI THU HIEN","dept":"休閒與觀光管理系","class":"B"},
+            {"id":"26F10128","name":"陶金銀","enName":"DAO KIM NGAN","dept":"休閒與觀光管理系","class":"B"},
+            {"id":"26F10131","name":"黎阮紅錦","enName":"LE NGUYEN HONG CAM","dept":"休閒與觀光管理系","class":"B"},
+            {"id":"26F22142","name":"阮寶安","enName":"NGUYEN BAO AN","dept":"餐旅與烘焙管理系","class":"B"},
+            {"id":"26F10115","name":"張文龍","enName":"TRUONG VAN LONG","dept":"休閒與觀光管理系","class":"B"},
+
+            // Class C
+            {"id":"26F13108","name":"朱語寧","enName":"JAMES ARWEIN SURBAN EVIN","dept":"資訊工程系","class":"C"},
+            {"id":"26F13107","name":"劉心雅","enName":"CASSANDRA FAITH DELOS SANTOS CALUAG","dept":"資訊工程系","class":"C"},
+            {"id":"26F13101","name":"陳馬克","enName":"MARK ANTHONY TAN","dept":"資訊工程系","class":"C"},
+
+            // Class D
+            {"id":"26F22120","name":"吳忠友","enName":"NGO TRUNG HUU","dept":"餐旅與烘焙管理系","class":"D"},
+            {"id":"26F22112","name":"潘氏秋","enName":"PHAN THI THU","dept":"餐旅與烘焙管理系","class":"D"},
+
+            // Class E
+            {"id":"26F22102","name":"林華仁","enName":"KIMBERLY JOY GENERALAO APAS","dept":"餐旅與烘焙管理系","class":"E"},
+            {"id":"26F22105","name":"鄭美玲","enName":"CHENG MEI LING","dept":"餐旅與烘焙管理系","class":"E"},
+
+            // Class F
+            {"id":"26F22128","name":"鄧芳英","enName":"DANG PHUONG ANH","dept":"餐旅與烘焙管理系","class":"F"},
+            {"id":"26F22130","name":"羅文杰","enName":"LUO WEN JIE","dept":"餐旅與烘焙管理系","class":"F"},
+
+            // Class G
+            {"id":"26F01106","name":"張若美","enName":"NORY MAE BALINQUIT CANTA","dept":"資訊管理系","class":"G"},
+            {"id":"26F01102","name":"陳志強","enName":"TRAN CHI CUONG","dept":"資訊管理系","class":"G"},
+
+            // Class H
+            {"id":"26F22109","name":"黎玉珍","enName":"LE NGOC TRAM","dept":"餐旅與烘焙管理系","class":"H"},
+            {"id":"26F22111","name":"高文華","enName":"CAO VAN HOA","dept":"餐旅與烘焙管理系","class":"H"}
+        ];
+
+        // Standard Periods Reference
+        const PERIOD_SLOTS = [
+            { period: "1", time: "08:10 - 09:00", label: "第 1 節" },
+            { period: "2", time: "09:10 - 10:00", label: "第 2 節" },
+            { period: "3", time: "10:10 - 11:00", label: "第 3 節" },
+            { period: "4", time: "11:10 - 12:00", label: "第 4 節" },
+            { period: "L", time: "12:00 - 13:10", label: "午休" },
+            { period: "5", time: "13:10 - 14:00", label: "第 5 節" },
+            { period: "6", time: "14:10 - 15:00", label: "第 6 節" },
+            { period: "7", time: "15:10 - 16:00", label: "第 7 節" },
+            { period: "8", time: "16:10 - 17:00", label: "第 8 節" },
+            { period: "E", time: "17:10 - 18:00", label: "第 E 節" }
+        ];
+
+        // 2. Class Schedules for A ~ H
+        const classSchedules = {
+            "A": {
+                1: { "1": { name: "綜合華語(一)", teacher: "陳惠美", room: "T0301" }, "2": { name: "綜合華語(一)", teacher: "陳惠美", room: "T0301" }, "3": { name: "華語聽力與口語", teacher: "林建志", room: "T0301" }, "4": { name: "華語聽力與口語", teacher: "林建志", room: "T0301" } },
+                2: { "3": { name: "休閒觀光概論", teacher: "張雅婷", room: "L0201" }, "4": { name: "休閒觀光概論", teacher: "張雅婷", room: "L0201" }, "5": { name: "華語閱讀與寫作", teacher: "王國強", room: "T0301" }, "6": { name: "華語閱讀與寫作", teacher: "王國強", room: "T0301" } },
+                3: { "1": { name: "臺灣文化體驗", teacher: "黃淑芬", room: "C0102" }, "2": { name: "臺灣文化體驗", teacher: "黃淑芬", room: "C0102" }, "5": { name: "實用生活華語", teacher: "陳惠美", room: "T0301" }, "6": { name: "實用生活華語", teacher: "陳惠美", room: "T0301" } },
+                4: { "2": { name: "觀光餐旅華語", teacher: "劉銘德", room: "T0301" }, "3": { name: "觀光餐旅華語", teacher: "劉銘德", room: "T0301" }, "4": { name: "觀光餐旅華語", teacher: "劉銘德", room: "T0301" } },
+                5: { "1": { name: "TOCFL華語測驗輔導", teacher: "林建志", room: "T0301" }, "2": { name: "TOCFL華語測驗輔導", teacher: "林建志", room: "T0301" } }
+            },
+            "B": {
+                1: { "3": { name: "綜合華語(一)", teacher: "張雅婷", room: "T0302" }, "4": { name: "綜合華語(一)", teacher: "張雅婷", room: "T0302" }, "5": { name: "華語聽力", teacher: "陳惠美", room: "T0302" }, "6": { name: "華語聽力", teacher: "陳惠美", room: "T0302" } },
+                2: { "1": { name: "華語閱讀", teacher: "王國強", room: "T0302" }, "2": { name: "華語閱讀", teacher: "王國強", room: "T0302" }, "5": { name: "休閒概論", teacher: "劉銘德", room: "L0202" }, "6": { name: "休閒概論", teacher: "劉銘德", room: "L0202" } },
+                3: { "3": { name: "實用華語會話", teacher: "林建志", room: "T0302" }, "4": { name: "實用華語會話", teacher: "林建志", room: "T0302" } },
+                4: { "1": { name: "臺灣在地文化", teacher: "黃淑芬", room: "C0102" }, "2": { name: "臺灣在地文化", teacher: "黃淑芬", room: "C0102" }, "5": { name: "餐旅專業華語", teacher: "張雅婷", room: "T0302" }, "6": { name: "餐旅專業華語", teacher: "張雅婷", room: "T0302" } },
+                5: { "3": { name: "TOCFL輔導", teacher: "陳惠美", room: "T0302" }, "4": { name: "TOCFL輔導", teacher: "陳惠美", room: "T0302" } }
+            },
+            "C": {
+                1: { "1": { name: "資訊科技華語", teacher: "許文彬", room: "S0204" }, "2": { name: "資訊科技華語", teacher: "許文彬", room: "S0204" }, "3": { name: "基礎程式設計", teacher: "郭建宏", room: "S0301" }, "4": { name: "基礎程式設計", teacher: "郭建宏", room: "S0301" } },
+                2: { "3": { name: "綜合華語(二)", teacher: "陳惠美", room: "S0204" }, "4": { name: "綜合華語(二)", teacher: "陳惠美", room: "S0204" } },
+                3: { "1": { name: "華語聽力與寫作", teacher: "王國強", room: "S0204" }, "2": { name: "華語聽力與寫作", teacher: "王國強", room: "S0204" }, "5": { name: "邏輯思考與運算", teacher: "許文彬", room: "S0301" }, "6": { name: "邏輯思考與運算", teacher: "許文彬", room: "S0301" } },
+                4: { "3": { name: "臺灣文化", teacher: "黃淑芬", room: "C0101" }, "4": { name: "臺灣文化", teacher: "黃淑芬", room: "C0101" } },
+                5: { "2": { name: "TOCFL考照實戰", teacher: "林建志", room: "S0204" }, "3": { name: "TOCFL考照實戰", teacher: "林建志", room: "S0204" } }
+            },
+            "D": {
+                1: { "2": { name: "烘焙基礎實務", teacher: "李國棟", room: "H0101" }, "3": { name: "烘焙基礎實務", teacher: "李國棟", room: "H0101" }, "4": { name: "烘焙基礎實務", teacher: "李國棟", room: "H0101" } },
+                2: { "1": { name: "餐旅華語會話", teacher: "張雅婷", room: "H0202" }, "2": { name: "餐旅華語會話", teacher: "張雅婷", room: "H0202" } },
+                3: { "3": { name: "綜合華語(一)", teacher: "陳惠美", room: "H0202" }, "4": { name: "綜合華語(一)", teacher: "陳惠美", room: "H0202" }, "5": { name: "食品衛生華語", teacher: "李國棟", room: "H0202" }, "6": { name: "食品衛生華語", teacher: "李國棟", room: "H0202" } },
+                4: { "1": { name: "華語聽講", teacher: "王國強", room: "H0202" }, "2": { name: "華語聽講", teacher: "王國強", room: "H0202" } },
+                5: { "1": { name: "文化與生活體驗", teacher: "黃淑芬", room: "C0102" }, "2": { name: "文化與生活體驗", teacher: "黃淑芬", room: "C0102" } }
+            },
+            "E": {
+                1: { "3": { name: "華語會話練習", teacher: "林建志", room: "T0401" }, "4": { name: "華語會話練習", teacher: "林建志", room: "T0401" } },
+                2: { "2": { name: "餐旅服務管理", teacher: "周秀芬", room: "H0301" }, "3": { name: "餐旅服務管理", teacher: "周秀芬", room: "H0301" }, "5": { name: "綜合華語(一)", teacher: "陳惠美", room: "T0401" }, "6": { name: "綜合華語(一)", teacher: "陳惠美", room: "T0401" } },
+                3: { "1": { name: "華語閱讀", teacher: "張雅婷", room: "T0401" }, "2": { name: "華語閱讀", teacher: "張雅婷", room: "T0401" } },
+                4: { "3": { name: "飲料調製華語", teacher: "周秀芬", room: "H0302" }, "4": { name: "飲料調製華語", teacher: "周秀芬", room: "H0302" } },
+                5: { "2": { name: "臺灣風土華語", teacher: "黃淑芬", room: "T0401" }, "3": { name: "臺灣風土華語", teacher: "黃淑芬", room: "T0401" } }
+            },
+            "F": {
+                1: { "1": { name: "基礎餐飲華語", teacher: "周秀芬", room: "H0205" }, "2": { name: "基礎餐飲華語", teacher: "周秀芬", room: "H0205" } },
+                2: { "3": { name: "綜合華語(二)", teacher: "王國強", room: "H0205" }, "4": { name: "綜合華語(二)", teacher: "王國強", room: "H0205" } },
+                3: { "2": { name: "華語聽講表達", teacher: "林建志", room: "H0205" }, "3": { name: "華語聽講表達", teacher: "林建志", room: "H0205" }, "5": { name: "烘焙專業用語", teacher: "李國棟", room: "H0101" }, "6": { name: "烘焙專業用語", teacher: "李國棟", room: "H0101" } },
+                4: { "1": { name: "生活實用華語", teacher: "張雅婷", room: "H0205" }, "2": { name: "生活實用華語", teacher: "張雅婷", room: "H0205" } },
+                5: { "3": { name: "TOCFL檢定實力班", teacher: "陳惠美", room: "H0205" }, "4": { name: "TOCFL檢定實力班", teacher: "陳惠美", room: "H0205" } }
+            },
+            "G": {
+                1: { "2": { name: "資管專業華語", teacher: "郭建宏", room: "S0101" }, "3": { name: "資管專業華語", teacher: "郭建宏", room: "S0101" } },
+                2: { "1": { name: "綜合華語(一)", teacher: "張雅婷", room: "S0101" }, "2": { name: "綜合華語(一)", teacher: "張雅婷", room: "S0101" }, "5": { name: "辦公室軟體應用", teacher: "許文彬", room: "S0302" }, "6": { name: "辦公室軟體應用", teacher: "許文彬", room: "S0302" } },
+                3: { "3": { name: "華語讀寫發展", teacher: "陳惠美", room: "S0101" }, "4": { name: "華語讀寫發展", teacher: "陳惠美", room: "S0101" } },
+                4: { "2": { name: "數字與邏輯華語", teacher: "郭建宏", room: "S0101" }, "3": { name: "數字與邏輯華語", teacher: "郭建宏", room: "S0101" } },
+                5: { "1": { name: "臺灣文化講座", teacher: "黃淑芬", room: "C0101" }, "2": { name: "臺灣文化講座", teacher: "黃淑芬", room: "C0101" } }
+            },
+            "H": {
+                1: { "3": { name: "綜合華語(一)", teacher: "王國強", room: "H0305" }, "4": { name: "綜合華語(一)", teacher: "王國強", room: "H0305" } },
+                2: { "2": { name: "華語口語訓練", teacher: "林建志", room: "H0305" }, "3": { name: "華語口語訓練", teacher: "林建志", room: "H0305" }, "5": { name: "餐飲服務實務", teacher: "周秀芬", room: "H0102" }, "6": { name: "餐飲服務實務", teacher: "周秀芬", room: "H0102" } },
+                3: { "1": { name: "生活應用華語", teacher: "陳惠美", room: "H0305" }, "2": { name: "生活應用華語", teacher: "陳惠美", room: "H0305" } },
+                4: { "3": { name: "異國文化交流", teacher: "黃淑芬", room: "C0102" }, "4": { name: "異國文化交流", teacher: "黃淑芬", room: "C0102" } },
+                5: { "2": { name: "TOCFL閱讀輔導", teacher: "張雅婷", room: "H0305" }, "3": { name: "TOCFL閱讀輔導", teacher: "張雅婷", room: "H0305" } }
+            }
+        };
+
+        // State Variables
+        let currentStudent = null;
+        let selectedDay = 1; // 1 = Mon, 5 = Fri
+        let activeScheduleTab = 'today'; // 'today' | 'weekly'
+
+        window.addEventListener('DOMContentLoaded', () => {
+            startClock();
+            autoSetDefaultDay();
+            lucide.createIcons();
+            
+            // Default query for seamless user experience
+            quickTest('26F10125');
+        });
+
+        function startClock() {
+            const timeEl = document.getElementById('time-display');
+            const update = () => {
+                const now = new Date();
+                timeEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
+            };
+            update();
+            setInterval(update, 1000);
+        }
+
+        function autoSetDefaultDay() {
+            const now = new Date();
+            let day = now.getDay(); // 0 = Sun, 1 = Mon ... 6 = Sat
+            if (day === 0 || day === 6) {
+                selectedDay = 1; // Default Monday if weekend
+            } else {
+                selectedDay = day;
+            }
+        }
+
+        function performSearch() {
+            const input = document.getElementById('student-search-input');
+            const queryId = input.value.trim().toUpperCase();
+
+            if (!queryId) {
+                showError("請輸入學生學號！");
+                return;
+            }
+
+            const student = studentsData.find(s => s.id === queryId);
+
+            if (student) {
+                hideError();
+                currentStudent = student;
+                renderStudentProfile(student);
+                renderScheduleViews();
+                
+                // Toggle display
+                document.getElementById('welcome-placeholder').classList.add('hidden');
+                document.getElementById('student-profile-card').classList.remove('hidden');
+                document.getElementById('schedule-section').classList.remove('hidden');
+            } else {
+                showError(`查無學號 [ ${queryId} ] 之學生資料，請確認學號或更換測試學號。`);
+            }
+        }
+
+        function quickTest(studentId) {
+            document.getElementById('student-search-input').value = studentId;
+            performSearch();
+        }
+
+        function showError(msg) {
+            const banner = document.getElementById('error-banner');
+            document.getElementById('error-msg').textContent = msg;
+            banner.classList.remove('hidden');
+        }
+
+        function hideError() {
+            document.getElementById('error-banner').classList.add('hidden');
+        }
+
+        function renderStudentProfile(student) {
+            document.getElementById('student-cn-name').textContent = student.name;
+            document.getElementById('student-en-name').textContent = student.enName;
+            document.getElementById('student-id-display').textContent = student.id;
+            document.getElementById('student-dept-display').querySelector('span').textContent = student.dept;
+            document.getElementById('student-class-badge').textContent = `${student.class} 班`;
+            document.getElementById('student-avatar').textContent = student.name.charAt(0);
+        }
+
+        function switchScheduleTab(tab) {
+            activeScheduleTab = tab;
+            const btnToday = document.getElementById('tab-btn-today');
+            const btnWeekly = document.getElementById('tab-btn-weekly');
+            const contentToday = document.getElementById('tab-content-today');
+            const contentWeekly = document.getElementById('tab-content-weekly');
+
+            if (tab === 'today') {
+                btnToday.className = "flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center justify-center space-x-2 transition-all bg-brand-600 text-white shadow-sm";
+                btnWeekly.className = "flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-600 hover:text-slate-900 flex items-center justify-center space-x-2 transition-all";
+                contentToday.classList.remove('hidden');
+                contentWeekly.classList.add('hidden');
+            } else {
+                btnWeekly.className = "flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center justify-center space-x-2 transition-all bg-brand-600 text-white shadow-sm";
+                btnToday.className = "flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-600 hover:text-slate-900 flex items-center justify-center space-x-2 transition-all";
+                contentWeekly.classList.remove('hidden');
+                contentToday.classList.add('hidden');
+            }
+            renderScheduleViews();
+        }
+
+        function selectDay(dayNum) {
+            selectedDay = dayNum;
+            renderScheduleViews();
+        }
+
+        function updateDayButtonsUI() {
+            for (let i = 1; i <= 5; i++) {
+                const btn = document.getElementById(`day-btn-${i}`);
+                if (i === selectedDay) {
+                    btn.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold transition bg-white text-brand-700 shadow-sm border border-slate-200/80";
+                } else {
+                    btn.className = "px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-800 transition";
+                }
+            }
+        }
+
+        function renderScheduleViews() {
+            if (!currentStudent) return;
+
+            updateDayButtonsUI();
+
+            const studentClass = currentStudent.class;
+            const fullSchedule = classSchedules[studentClass] || {};
+
+            // 1. Render Today Schedule List
+            const todayListContainer = document.getElementById('today-schedule-list');
+            todayListContainer.innerHTML = '';
+
+            const daySchedule = fullSchedule[selectedDay] || {};
+            let hasCourses = false;
+
+            PERIOD_SLOTS.forEach(slot => {
+                const course = daySchedule[slot.period];
+                if (course) {
+                    hasCourses = true;
+                    const card = document.createElement('div');
+                    card.className = "flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-brand-300 hover:bg-brand-50/30 transition gap-3";
+
+                    card.innerHTML = `
+                        <div class="flex items-start space-x-3.5">
+                            <div class="px-2.5 py-1 bg-white border border-slate-200 text-slate-700 font-mono font-bold text-xs rounded-lg text-center shrink-0 shadow-2xs">
+                                <span>${slot.label}</span>
+                                <span class="block text-[10px] text-slate-400 font-normal mt-0.5">${slot.time}</span>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-sm text-slate-900">${course.name}</h4>
+                                <div class="flex items-center space-x-3 text-xs text-slate-500 mt-1">
+                                    <span class="flex items-center gap-1"><i data-lucide="user" class="w-3.5 h-3.5 text-slate-400"></i> ${course.teacher}</span>
+                                    <span class="flex items-center gap-1"><i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-400"></i> ${course.room}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="px-2.5 py-1 bg-brand-100 text-brand-800 text-[11px] font-bold rounded-md shrink-0 self-end sm:self-center">
+                            正課
+                        </span>
+                    `;
+                    todayListContainer.appendChild(card);
+                }
+            });
+
+            if (!hasCourses) {
+                todayListContainer.innerHTML = `
+                    <div class="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-400">
+                        <i data-lucide="coffee" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
+                        <p class="text-xs font-semibold">今天沒有排課，好好休息！</p>
+                    </div>
+                `;
+            }
+
+            // 2. Render Weekly Schedule Grid (5 Days x 10 Periods)
+            const gridContainer = document.getElementById('weekly-grid-container');
+            gridContainer.innerHTML = '';
+
+            const weekdays = ["節次 / 時間", "星期一", "星期二", "星期三", "星期四", "星期五"];
+
+            // Header Row
+            weekdays.forEach((dayTitle, idx) => {
+                const header = document.createElement('div');
+                const isSelected = idx === selectedDay;
+                header.className = `p-2.5 text-center font-bold text-xs rounded-lg border ${
+                    isSelected ? 'bg-brand-600 text-white border-brand-700' : 'bg-slate-100 text-slate-700 border-slate-200'
+                }`;
+                header.textContent = dayTitle;
+                gridContainer.appendChild(header);
+            });
+
+            // Grid Rows (Periods 1 ~ 8, L, E)
+            PERIOD_SLOTS.forEach(slot => {
+                // Period Column Header
+                const timeCol = document.createElement('div');
+                timeCol.className = "p-2 bg-slate-50 rounded-lg border border-slate-200/80 text-center font-mono flex flex-col justify-center items-center";
+                timeCol.innerHTML = `
+                    <span class="font-bold text-slate-700">${slot.label}</span>
+                    <span class="text-[9px] text-slate-400 leading-tight mt-0.5">${slot.time.split(' - ')[0]}</span>
+                `;
+                gridContainer.appendChild(timeCol);
+
+                // Monday to Friday Cells
+                for (let day = 1; day <= 5; day++) {
+                    const daySchedule = fullSchedule[day] || {};
+                    const course = daySchedule[slot.period];
+
+                    const cell = document.createElement('div');
+
+                    if (course) {
+                        cell.className = "p-2 rounded-lg border border-brand-200 bg-brand-50/70 hover:bg-brand-100/80 transition flex flex-col justify-between shadow-2xs";
+                        cell.innerHTML = `
+                            <div>
+                                <span class="font-bold text-brand-900 text-[11px] leading-snug block">${course.name}</span>
+                            </div>
+                            <div class="mt-1.5 text-[10px] text-slate-600 space-y-0.5">
+                                <div class="truncate"><i data-lucide="user" class="w-2.5 h-2.5 inline mr-0.5"></i>${course.teacher}</div>
+                                <div class="font-medium text-brand-700"><i data-lucide="map-pin" class="w-2.5 h-2.5 inline mr-0.5"></i>${course.room}</div>
+                            </div>
+                        `;
+                    } else {
+                        cell.className = "p-2 rounded-lg border border-slate-100 bg-slate-50/40 text-center flex items-center justify-center text-slate-300";
+                        cell.innerHTML = `<span class="text-[10px]">-</span>`;
+                    }
+
+                    gridContainer.appendChild(cell);
+                }
+            });
+
+            // Re-initialize Lucide Icons after rendering content
+            lucide.createIcons();
+        }
+    </script>
+</body>
+</html>
